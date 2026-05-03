@@ -33,14 +33,19 @@ function saveSettings() {
 // ==========================================
 async function loadAllData() {
     try {
-        const [txRes, fcRes] = await Promise.all([ fetch(API_BASE_URL), fetch(FC_API_URL) ]);
+        // 通常の取引データと固定費データの両方を同時に取得
+        const [txRes, fcRes] = await Promise.all([
+            fetch(API_BASE_URL),
+            fetch(FC_API_URL)
+        ]);
+
         if (txRes.ok) dbTransactions = await txRes.json();
         if (fcRes.ok) dbFixedCosts = await fcRes.json();
+
         renderCalendar(currentYear, currentMonth);
         renderFixedCostsList();
-    } catch (error) { 
-        console.error("データ取得エラー:", error); 
-        alert("データの取得に失敗しました。URLが正しいか確認してください。");
+    } catch (error) {
+        console.error("データ取得エラー:", error);
     }
 }
 
