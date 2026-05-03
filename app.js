@@ -1,7 +1,7 @@
 // ==========================================
 // 簡易デバイスロック
 // ==========================================
-const MY_SECRET_PASSWORD = "kakeibo-apple"; // ★ご自身のパスワードに書き換えてください
+const MY_SECRET_PASSWORD = "089"; // ★ご自身のパスワードに書き換えてください
 const savedKey = localStorage.getItem("kakeibo_device_lock");
 if (savedKey !== MY_SECRET_PASSWORD) {
     const userInput = prompt("このアプリを利用するための合言葉を入力してください。");
@@ -24,9 +24,9 @@ let selectedDateString = null;
 let dbTransactions = []; 
 let dbFixedCosts = []; 
 
-// ★RenderのURLに書き換えてください
-const API_BASE_URL = 'https://kakeibo-api-xxxx.onrender.com/api/transactions';
-const FC_API_URL = 'https://kakeibo-api-xxxx.onrender.com/api/fixed_costs';
+// 
+const API_BASE_URL = 'https://kakeibo-93mp.onrender.com/api/transactions';
+const FC_API_URL = 'https://kakeibo-93mp.onrender.com/api/fixed_costs';
 
 // ==========================================
 // 【追加】ローディング画面の表示・非表示コントロール
