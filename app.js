@@ -1,21 +1,4 @@
 // ==========================================
-// 簡易デバイスロック（初回のみパスワード要求）
-// ==========================================
-const MY_SECRET_PASSWORD = "089"; // ★ご自身のパスワードに書き換えてください
-const savedKey = localStorage.getItem("kakeibo_device_lock");
-if (savedKey !== MY_SECRET_PASSWORD) {
-    const userInput = prompt("このアプリを利用するための合言葉を入力してください。");
-    if (userInput === MY_SECRET_PASSWORD) {
-        localStorage.setItem("kakeibo_device_lock", MY_SECRET_PASSWORD);
-        alert("このデバイスを登録しました！次回以降は入力不要です。");
-    } else {
-        alert("合言葉が違います。アクセスは拒否されました。");
-        document.body.innerHTML = "<h1 style='text-align:center; margin-top:50px;'>アクセス権がありません</h1>";
-        throw new Error("Unauthorized Device");
-    }
-}
-
-// ==========================================
 // アプリの状態管理とAPI設定
 // ==========================================
 let currentYear = new Date().getFullYear();
