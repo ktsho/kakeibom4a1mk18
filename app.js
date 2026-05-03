@@ -8,8 +8,8 @@ let dbTransactions = [];
 let dbFixedCosts = []; 
 
 // ★ここをご自身のRenderのURLに書き換えてください！★
-const API_BASE_URL = 'https://kakeibo-api-https://kakeibo-93mp.onrender.com.onrender.com/api/transactions';
-const FC_API_URL = 'https://kakeibo-api-https://kakeibo-93mp.onrender.com.onrender.com/api/fixed_costs';
+const API_BASE_URL = 'https://kakeibo-93mp.onrender.com/api/transactions';
+const FC_API_URL = 'https://kakeibo-93mp.onrender.com/api/fixed_costs';
 
 // ==========================================
 // カテゴリ・カスタマイズ設定の管理
