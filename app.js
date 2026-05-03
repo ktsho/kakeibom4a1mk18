@@ -8,18 +8,8 @@ let dbTransactions = [];
 let dbFixedCosts = []; 
 
 // ★ここをご自身のRenderのURLに書き換えてください！★
-const API_BASE_URL = 'https://phqhlqubprxkhcgmhnfg.supabase.co';
-const FC_API_URL = 'sb_publishable_yPGb07Jtyze6t7wzhichaQ_qBMi5hmU';
-
-// ==========================================
-// ローディング画面の表示・非表示コントロール
-// ==========================================
-function showLoading() {
-    document.getElementById('loading-overlay').classList.add('active');
-}
-function hideLoading() {
-    document.getElementById('loading-overlay').classList.remove('active');
-}
+const API_BASE_URL = 'https://kakeibo-api-https://kakeibo-93mp.onrender.com.onrender.com/api/transactions';
+const FC_API_URL = 'https://kakeibo-api-https://kakeibo-93mp.onrender.com.onrender.com/api/fixed_costs';
 
 // ==========================================
 // カテゴリ・カスタマイズ設定の管理
@@ -42,7 +32,6 @@ function saveSettings() {
 // データベース通信処理
 // ==========================================
 async function loadAllData() {
-    showLoading(); // 通信開始時にローディング表示
     try {
         const [txRes, fcRes] = await Promise.all([ fetch(API_BASE_URL), fetch(FC_API_URL) ]);
         if (txRes.ok) dbTransactions = await txRes.json();
@@ -52,8 +41,6 @@ async function loadAllData() {
     } catch (error) { 
         console.error("データ取得エラー:", error); 
         alert("データの取得に失敗しました。URLが正しいか確認してください。");
-    } finally {
-        hideLoading(); // 成功しても失敗してもローディングを消す
     }
 }
 
@@ -247,7 +234,6 @@ document.getElementById('save-btn').addEventListener('click', async () => {
     if (!amount) { alert("金額を入力してください"); return; }
     const payload = { date, category, amount, memo, type };
 
-    showLoading(); 
     try {
         let url = API_BASE_URL; let method = 'POST';
         if (editId) { url = `${API_BASE_URL}/${editId}`; method = 'PUT'; }
@@ -257,11 +243,9 @@ document.getElementById('save-btn').addEventListener('click', async () => {
             if (selectedDateString) { openDailyDetail(selectedDateString); } else { switchView('view-calendar'); }
         } else { 
             alert("保存に失敗しました。"); 
-            hideLoading();
         }
     } catch (error) { 
         console.error("通信エラー:", error); 
-        hideLoading();
     }
 });
 
@@ -269,18 +253,14 @@ document.getElementById('delete-btn').addEventListener('click', async () => {
     if (!confirm("本当にこのデータを削除しますか？")) return;
     const editId = document.getElementById('edit-id').value;
     
-    showLoading();
     try {
         const response = await fetch(`${API_BASE_URL}/${editId}`, { method: 'DELETE' });
         if (response.ok) { 
             await loadAllData(); 
             openDailyDetail(selectedDateString); 
-        } else {
-            hideLoading();
         }
     } catch (error) { 
         console.error("通信エラー:", error); 
-        hideLoading();
     }
 });
 
@@ -347,13 +327,11 @@ function renderFixedCostsList() {
     document.querySelectorAll('.delete-fc-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             if (!confirm("この固定費を削除しますか？")) return;
-            showLoading();
             try {
                 await fetch(`${FC_API_URL}/${e.target.getAttribute('data-id')}`, { method: 'DELETE' });
                 await loadAllData(); 
             } catch (error) {
                 console.error(error);
-                hideLoading();
             }
         });
     });
@@ -367,19 +345,15 @@ document.getElementById('save-fc-btn').addEventListener('click', async () => {
 
     const payload = { name, amount, payment_day: paymentDay, memo: "" };
     
-    showLoading();
     try {
         const response = await fetch(FC_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (response.ok) {
             document.getElementById('fc-name').value = ''; document.getElementById('fc-amount').value = ''; document.getElementById('fc-payment-day').value = '';
             await loadAllData(); 
             alert("固定費を登録しました！");
-        } else {
-            hideLoading();
         }
     } catch (error) { 
         console.error("通信エラー:", error); 
-        hideLoading();
     }
 });
 
