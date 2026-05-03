@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>スマート家計簿</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ==============================
+         1. カレンダー・ホーム画面
+    ============================== -->
+    <div id="view-calendar" class="app-view active">
+        <header class="header">
+            <button id="prev-month">◀</button>
+            <h1 id="current-month-display"></h1>
+            <div>
+                <button id="next-month">▶</button>
+                <button id="btn-to-settings" style="margin-left: 10px; font-size: 20px;">⚙️</button>
+            </div>
+        </header>
+
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <span style="color:red;">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span style="color:blue;">土</span>
+            </div>
+            <div id="calendar-grid" class="calendar-grid">
+                <!-- JSで自動生成 -->
+            </div>
+        </div>
+
+        <div class="summary-container">
+            <!-- 累計総資産（すべての期間の合算） -->
+            <div class="total-asset-box">
+                <span class="label-white">現在の総資産</span>
+                <span id="total-net-worth" class="asset-text">0円</span>
+            </div>
+
+            <!-- 今月の収支サマリー -->
+            <div class="summary-box" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <div class="summary-item" style="width: 45%;">
+                    <span class="label">今月の収入</span><span id="monthly-income" class="income-text">+0円</span>
+                </div>
+                <div class="summary-item" style="width: 45%;">
+                    <span class="label">今月の支出</span><span id="monthly-expense" class="expense-text">-0円</span>
+                </div>
+                <div class="summary-item" style="width: 45%;">
+                    <span class="label">今月の固定費</span><span id="monthly-fixed" class="expense-text">-0円</span>
+                </div>
+                <div class="summary-item highlight" style="width: 45%;">
+                    <span class="label">今月の残金</span><span id="monthly-balance" class="balance-text">0円</span>
+                </div>
+            </div>
+        </div>
+
+        <button id="fab-add" class="fab">+</button>
+    </div>
+
+    <!-- ==============================
+         2. 日別詳細画面
+    ============================== -->
+    <div id="view-daily-detail" class="app-view">
+        <header class="header">
+            <button class="btn-back-to-calendar">戻る</button>
+            <h1 id="detail-date-title"></h1>
+            <div style="width: 40px;"></div>
+        </header>
+
+        <div class="form-container">
+            <div class="summary-box" style="margin-bottom: 20px; padding: 10px;">
+                <div class="summary-item"><span class="label">収入合計</span><span id="detail-total-income" class="income-text">0円</span></div>
+                <div class="summary-item"><span class="label">支出合計</span><span id="detail-total-expense" class="expense-text">0円</span></div>
+            </div>
+
+            <h2>登録データ一覧</h2>
+            <div id="daily-transaction-list" class="transaction-list">
+                <!-- JSで生成 -->
+            </div>
+
+            <button id="btn-to-new-input" class="save-btn" style="margin-top: 20px; background-color: #34c759;">＋ 新規入力</button>
+        </div>
+    </div>
+
+    <!-- ==============================
+         3. 入力・編集画面
+    ============================== -->
+    <div id="view-input" class="app-view">
+        <header class="header">
+            <button id="btn-back-to-detail">戻る</button>
+            <h1 id="input-view-title">記帳する</h1>
+            <div style="width: 40px;"></div>
+        </header>
+
+        <div class="form-container">
+            <input type="hidden" id="edit-id" value="">
+
+            <div class="type-switch">
+                <label><input type="radio" name="tx-type" value="expense" checked> 支出</label>
+                <label><input type="radio" name="tx-type" value="income"> 収入</label>
+            </div>
+            <div class="form-group">
+                <label for="date">日付</label>
+                <input type="date" id="date" required>
+            </div>
+            <div class="form-group">
+                <label for="category">カテゴリ</label>
+                <select id="category">
+                    <option value="食費">食費</option>
+                    <option value="日用品">日用品</option>
+                    <option value="交通費">交通費</option>
+                    <option value="給与">給与</option>
+                    <option value="その他">その他</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="amount">金額（円）</label>
+                <input type="number" id="amount" placeholder="例: 1500" required>
+            </div>
+            <div class="form-group">
+                <label for="memo">メモ</label>
+                <input type="text" id="memo" placeholder="例: スーパーでの買い物">
+            </div>
+            <button id="save-btn" class="save-btn">保存する</button>
+            <button id="delete-btn" class="save-btn" style="background-color: #ff3b30; margin-top: 10px; display: none;">データを削除</button>
+        </div>
+    </div>
+
+    <!-- ==============================
+         4. 設定画面（固定費・サブスク管理）
+    ============================== -->
+    <div id="view-settings" class="app-view">
+        <header class="header">
+            <button class="btn-back-to-calendar">戻る</button>
+            <h1>設定・固定費</h1>
+            <div style="width: 40px;"></div>
+        </header>
+        
+        <div class="form-container">
+            <h2>固定費・サブスクの登録</h2>
+            <div class="form-group">
+                <label for="fc-name">名称（家賃、Netflixなど）</label>
+                <input type="text" id="fc-name" placeholder="例: 家賃">
+            </div>
+            <div class="form-group">
+                <label for="fc-amount">毎月の金額（円）</label>
+                <input type="number" id="fc-amount" placeholder="例: 80000">
+            </div>
+            <div class="form-group">
+                <label for="fc-payment-day">毎月の支払日（日）</label>
+                <input type="number" id="fc-payment-day" placeholder="例: 25" min="1" max="31">
+            </div>
+            <button id="save-fc-btn" class="save-btn">固定費を登録</button>
+
+            <h2 style="margin-top: 30px;">登録済みの固定費</h2>
+            <div id="fixed-costs-list" class="transaction-list">
+                <!-- JSで生成 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

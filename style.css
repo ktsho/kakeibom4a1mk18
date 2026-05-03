@@ -1,0 +1,59 @@
+/* ベース設定 */
+body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; background-color: #f2f2f7; margin: 0; padding: 0; color: #333; }
+.app-view { display: none; padding-bottom: 80px; }
+.app-view.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ヘッダー */
+.header { background-color: #fff; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10; }
+.header h1 { font-size: 18px; margin: 0; }
+.header button { background: none; border: none; font-size: 16px; color: #007aff; cursor: pointer; padding: 5px; }
+
+/* カレンダー（ここが消えると崩れます） */
+.calendar-container { background: #fff; padding: 10px; margin-bottom: 15px; }
+.calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12px; color: #888; margin-bottom: 5px; font-weight: bold; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #ddd; border: 1px solid #ddd; }
+.calendar-cell { background-color: #fff; aspect-ratio: 1 / 1; padding: 2px; display: flex; flex-direction: column; align-items: center; font-size: 12px; cursor: pointer; }
+.calendar-cell:active { background-color: #f0f0f0; }
+.calendar-cell.empty { background-color: #f9f9f9; cursor: default; }
+.income-mini { color: #34c759; font-size: 10px; margin-top: 2px; }
+.expense-mini { color: #ff3b30; font-size: 10px; margin-top: 2px; }
+
+/* サマリーと予算 */
+.summary-container { padding: 0 15px; }
+.total-asset-box { background: linear-gradient(135deg, #007aff, #0056b3); color: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0, 122, 255, 0.2); }
+.label-white { display: block; font-size: 12px; color: rgba(255, 255, 255, 0.8); margin-bottom: 5px; }
+.asset-text { font-size: 28px; font-weight: bold; display: block; letter-spacing: 1px; }
+
+.summary-box { background: #fff; border-radius: 10px; padding: 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.summary-item { display: flex; flex-direction: column; align-items: center; }
+.label { font-size: 12px; color: #666; margin-bottom: 5px; }
+.income-text { color: #34c759; font-weight: bold; }
+.expense-text { color: #ff3b30; font-weight: bold; }
+.highlight { border-left: 2px solid #eee; padding-left: 15px; }
+.balance-text { font-size: 16px; font-weight: bold; color: #333; }
+
+/* ボタン・フォーム類 */
+.fab { position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 30px; background-color: #007aff; color: white; font-size: 30px; border: none; box-shadow: 0 4px 10px rgba(0, 122, 255, 0.4); cursor: pointer; z-index: 100; }
+.fab:active { background-color: #0056b3; }
+.form-container { padding: 20px; }
+.form-container h2 { font-size: 16px; margin-bottom: 10px; color: #333; border-bottom: 2px solid #007aff; padding-bottom: 5px; }
+.form-group { background-color: #fff; padding: 15px; margin-bottom: 15px; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
+.form-group input, .form-group select { width: 100%; border: none; font-size: 16px; outline: none; background-color: transparent; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+.type-switch { display: flex; justify-content: space-around; margin-bottom: 20px; }
+.save-btn { width: 100%; background-color: #007aff; color: white; border: none; padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; cursor: pointer; }
+.save-btn:active { opacity: 0.8; }
+
+/* 日別詳細画面のリストデザイン */
+.transaction-list { margin-top: 10px; }
+.transaction-item { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; border-left: 5px solid #ccc; }
+.transaction-item:active { background-color: #f0f0f0; }
+.tx-income-item { border-left-color: #34c759; }
+.tx-expense-item { border-left-color: #ff3b30; }
+.tx-info { display: flex; flex-direction: column; }
+.tx-cat { font-size: 12px; color: #888; margin-bottom: 4px; }
+.tx-memo { font-size: 14px; color: #333; font-weight: bold; }
+.tx-amount { font-size: 16px; font-weight: bold; }
+.tx-amount.income { color: #34c759; }
+.tx-amount.expense { color: #ff3b30; }
