@@ -7,12 +7,22 @@ let selectedDateString = null;
 let dbTransactions = []; 
 let dbFixedCosts = []; 
 
-// ★RenderのURLに書き換えてください
-const API_BASE_URL = https://phqhlqubprxkhcgmhnfg.supabase.co;
-const FC_API_URL = sb_publishable_yPGb07Jtyze6t7wzhichaQ_qBMi5hmU;
+// ★ここをご自身のRenderのURLに書き換えてください！★
+const API_BASE_URL = 'https://phqhlqubprxkhcgmhnfg.supabase.co';
+const FC_API_URL = 'sb_publishable_yPGb07Jtyze6t7wzhichaQ_qBMi5hmU';
 
 // ==========================================
-// 【追加】カテゴリ・カスタマイズ設定の管理
+// ローディング画面の表示・非表示コントロール
+// ==========================================
+function showLoading() {
+    document.getElementById('loading-overlay').classList.add('active');
+}
+function hideLoading() {
+    document.getElementById('loading-overlay').classList.remove('active');
+}
+
+// ==========================================
+// カテゴリ・カスタマイズ設定の管理
 // ==========================================
 const DEFAULT_SETTINGS = {
     expenseCategories: ["食費", "趣味", "交通費", "服飾", "交際費", "その他"],
@@ -21,25 +31,30 @@ const DEFAULT_SETTINGS = {
     defaultIncome: "給料"
 };
 
-// ローカルストレージから設定を読み込む
 let appSettings = JSON.parse(localStorage.getItem('kakeibo_custom_settings')) || DEFAULT_SETTINGS;
 
 function saveSettings() {
     localStorage.setItem('kakeibo_custom_settings', JSON.stringify(appSettings));
-    renderSettingsView(); // 保存したら設定画面を再描画
+    renderSettingsView(); 
 }
 
 // ==========================================
 // データベース通信処理
 // ==========================================
 async function loadAllData() {
+    showLoading(); // 通信開始時にローディング表示
     try {
         const [txRes, fcRes] = await Promise.all([ fetch(API_BASE_URL), fetch(FC_API_URL) ]);
         if (txRes.ok) dbTransactions = await txRes.json();
         if (fcRes.ok) dbFixedCosts = await fcRes.json();
         renderCalendar(currentYear, currentMonth);
         renderFixedCostsList();
-    } catch (error) { console.error("データ取得エラー:", error); }
+    } catch (error) { 
+        console.error("データ取得エラー:", error); 
+        alert("データの取得に失敗しました。URLが正しいか確認してください。");
+    } finally {
+        hideLoading(); // 成功しても失敗してもローディングを消す
+    }
 }
 
 // ==========================================
@@ -49,7 +64,7 @@ function switchView(viewId) {
     document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
     document.getElementById(viewId).classList.add('active');
     window.scrollTo(0, 0); 
-    if (viewId === 'view-settings') renderSettingsView(); // 設定画面を開くときに描画
+    if (viewId === 'view-settings') renderSettingsView(); 
 }
 
 document.querySelectorAll('.btn-back-to-calendar').forEach(btn => btn.addEventListener('click', () => switchView('view-calendar')));
@@ -166,17 +181,13 @@ document.getElementById('btn-to-new-input').addEventListener('click', () => { op
 // ==========================================
 // 入力・編集画面
 // ==========================================
-
-// 【追加】ラジオボタンの切り替えでカテゴリ選択肢を更新する処理
 function updateCategoryDropdown(selectedType, defaultSelectValue = null) {
     const select = document.getElementById('category');
-    select.innerHTML = ''; // 一旦空にする
+    select.innerHTML = ''; 
 
-    // 収入か支出かで配列を切り替え
     const categories = selectedType === 'expense' ? appSettings.expenseCategories : appSettings.incomeCategories;
     const defaultCat = selectedType === 'expense' ? appSettings.defaultExpense : appSettings.defaultIncome;
 
-    // もし過去のデータ（設定から削除されたカテゴリ）を編集する場合は、一時的に選択肢に追加する
     if (defaultSelectValue && !categories.includes(defaultSelectValue)) {
         const opt = document.createElement('option');
         opt.value = defaultSelectValue;
@@ -184,7 +195,6 @@ function updateCategoryDropdown(selectedType, defaultSelectValue = null) {
         select.appendChild(opt);
     }
 
-    // 選択肢の生成
     categories.forEach(cat => {
         const opt = document.createElement('option');
         opt.value = cat;
@@ -192,19 +202,15 @@ function updateCategoryDropdown(selectedType, defaultSelectValue = null) {
         select.appendChild(opt);
     });
 
-    // 選択状態の決定
     if (defaultSelectValue) {
-        select.value = defaultSelectValue; // 編集時は過去のデータを選択
+        select.value = defaultSelectValue; 
     } else if (categories.includes(defaultCat)) {
-        select.value = defaultCat; // 新規時は設定画面で決めた初期値を選択
+        select.value = defaultCat; 
     }
 }
 
-// ラジオボタンを押したときにプルダウンを切り替えるイベント
 document.querySelectorAll('input[name="tx-type"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-        updateCategoryDropdown(e.target.value);
-    });
+    radio.addEventListener('change', (e) => { updateCategoryDropdown(e.target.value); });
 });
 
 function openInputForm(dateStr, txData) {
@@ -216,7 +222,7 @@ function openInputForm(dateStr, txData) {
         document.getElementById('input-view-title').textContent = "編集する";
         document.getElementById('edit-id').value = txData.id;
         document.querySelector(`input[name="tx-type"][value="${txData.type}"]`).checked = true;
-        updateCategoryDropdown(txData.type, txData.category); // 既存のカテゴリを選択
+        updateCategoryDropdown(txData.type, txData.category); 
         document.getElementById('amount').value = txData.amount;
         document.getElementById('memo').value = txData.memo;
         document.getElementById('delete-btn').style.display = 'block'; 
@@ -224,13 +230,12 @@ function openInputForm(dateStr, txData) {
         document.getElementById('input-view-title').textContent = "記帳する";
         document.getElementById('edit-id').value = ""; 
         document.querySelector('input[name="tx-type"][value="expense"]').checked = true;
-        updateCategoryDropdown('expense'); // デフォルトは支出
+        updateCategoryDropdown('expense'); 
         document.getElementById('delete-btn').style.display = 'none'; 
     }
     switchView('view-input');
 }
 
-// 保存・削除処理
 document.getElementById('save-btn').addEventListener('click', async () => {
     const editId = document.getElementById('edit-id').value;
     const amount = parseInt(document.getElementById('amount').value, 10);
@@ -242,6 +247,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
     if (!amount) { alert("金額を入力してください"); return; }
     const payload = { date, category, amount, memo, type };
 
+    showLoading(); 
     try {
         let url = API_BASE_URL; let method = 'POST';
         if (editId) { url = `${API_BASE_URL}/${editId}`; method = 'PUT'; }
@@ -249,69 +255,64 @@ document.getElementById('save-btn').addEventListener('click', async () => {
         if (response.ok) {
             await loadAllData();
             if (selectedDateString) { openDailyDetail(selectedDateString); } else { switchView('view-calendar'); }
-        } else { alert("保存に失敗しました。"); }
-    } catch (error) { console.error("通信エラー:", error); }
+        } else { 
+            alert("保存に失敗しました。"); 
+            hideLoading();
+        }
+    } catch (error) { 
+        console.error("通信エラー:", error); 
+        hideLoading();
+    }
 });
 
 document.getElementById('delete-btn').addEventListener('click', async () => {
     if (!confirm("本当にこのデータを削除しますか？")) return;
     const editId = document.getElementById('edit-id').value;
+    
+    showLoading();
     try {
         const response = await fetch(`${API_BASE_URL}/${editId}`, { method: 'DELETE' });
-        if (response.ok) { await loadAllData(); openDailyDetail(selectedDateString); }
-    } catch (error) { console.error("通信エラー:", error); }
+        if (response.ok) { 
+            await loadAllData(); 
+            openDailyDetail(selectedDateString); 
+        } else {
+            hideLoading();
+        }
+    } catch (error) { 
+        console.error("通信エラー:", error); 
+        hideLoading();
+    }
 });
 
 // ==========================================
-// 【追加】設定画面の制御（カテゴリのカスタマイズ）
+// 設定画面の制御
 // ==========================================
 function renderSettingsView() {
-    // 支出カテゴリ一覧の描画
-    document.getElementById('settings-expense-list').innerHTML = appSettings.expenseCategories.map((cat, index) => 
-        `<div class="category-item">
-            <span>${cat}</span>
-            <button class="btn-small-del" onclick="deleteCategory('expense', ${index})">削除</button>
-        </div>`
-    ).join('');
-    
-    // 収入カテゴリ一覧の描画
-    document.getElementById('settings-income-list').innerHTML = appSettings.incomeCategories.map((cat, index) => 
-        `<div class="category-item">
-            <span>${cat}</span>
-            <button class="btn-small-del" onclick="deleteCategory('income', ${index})">削除</button>
-        </div>`
-    ).join('');
+    document.getElementById('settings-expense-list').innerHTML = appSettings.expenseCategories.map((cat, index) => `<div class="category-item"><span>${cat}</span><button class="btn-small-del" onclick="deleteCategory('expense', ${index})">削除</button></div>`).join('');
+    document.getElementById('settings-income-list').innerHTML = appSettings.incomeCategories.map((cat, index) => `<div class="category-item"><span>${cat}</span><button class="btn-small-del" onclick="deleteCategory('income', ${index})">削除</button></div>`).join('');
 
-    // 初期設定プルダウンの描画（支出）
     const expSelect = document.getElementById('default-expense-select');
     expSelect.innerHTML = appSettings.expenseCategories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
     if(appSettings.expenseCategories.includes(appSettings.defaultExpense)) expSelect.value = appSettings.defaultExpense;
 
-    // 初期設定プルダウンの描画（収入）
     const incSelect = document.getElementById('default-income-select');
     incSelect.innerHTML = appSettings.incomeCategories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
     if(appSettings.incomeCategories.includes(appSettings.defaultIncome)) incSelect.value = appSettings.defaultIncome;
 }
 
-// カテゴリ追加ボタン
 document.getElementById('add-expense-cat-btn').addEventListener('click', () => {
     const val = document.getElementById('new-expense-cat-input').value.trim();
     if (val && !appSettings.expenseCategories.includes(val)) {
-        appSettings.expenseCategories.push(val);
-        document.getElementById('new-expense-cat-input').value = '';
-        saveSettings();
+        appSettings.expenseCategories.push(val); document.getElementById('new-expense-cat-input').value = ''; saveSettings();
     }
 });
 document.getElementById('add-income-cat-btn').addEventListener('click', () => {
     const val = document.getElementById('new-income-cat-input').value.trim();
     if (val && !appSettings.incomeCategories.includes(val)) {
-        appSettings.incomeCategories.push(val);
-        document.getElementById('new-income-cat-input').value = '';
-        saveSettings();
+        appSettings.incomeCategories.push(val); document.getElementById('new-income-cat-input').value = ''; saveSettings();
     }
 });
 
-// カテゴリ削除ボタン（HTML側から呼ばれる）
 window.deleteCategory = function(type, index) {
     if (!confirm("このカテゴリを削除しますか？\n（※過去の入力データは消えません）")) return;
     if (type === 'expense') {
@@ -324,19 +325,12 @@ window.deleteCategory = function(type, index) {
     saveSettings();
 };
 
-// 初期設定が変更されたとき
-document.getElementById('default-expense-select').addEventListener('change', (e) => {
-    appSettings.defaultExpense = e.target.value;
-    saveSettings();
-});
-document.getElementById('default-income-select').addEventListener('change', (e) => {
-    appSettings.defaultIncome = e.target.value;
-    saveSettings();
-});
+document.getElementById('default-expense-select').addEventListener('change', (e) => { appSettings.defaultExpense = e.target.value; saveSettings(); });
+document.getElementById('default-income-select').addEventListener('change', (e) => { appSettings.defaultIncome = e.target.value; saveSettings(); });
 
 
 // ==========================================
-// 固定費の設定と保存（既存）
+// 固定費の設定と保存
 // ==========================================
 function renderFixedCostsList() {
     const listContainer = document.getElementById('fixed-costs-list');
@@ -349,11 +343,18 @@ function renderFixedCostsList() {
         itemDiv.innerHTML = `<div class="tx-info"><span class="tx-cat">毎月 ${fc.payment_day}日</span><span class="tx-memo">${fc.name}</span></div><div style="display: flex; align-items: center;"><div class="tx-amount expense" style="margin-right: 15px;">-${fc.amount.toLocaleString()}円</div><button class="delete-fc-btn" data-id="${fc.id}" style="background: #ff3b30; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">削除</button></div>`;
         listContainer.appendChild(itemDiv);
     });
+
     document.querySelectorAll('.delete-fc-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             if (!confirm("この固定費を削除しますか？")) return;
-            await fetch(`${FC_API_URL}/${e.target.getAttribute('data-id')}`, { method: 'DELETE' });
-            loadAllData(); 
+            showLoading();
+            try {
+                await fetch(`${FC_API_URL}/${e.target.getAttribute('data-id')}`, { method: 'DELETE' });
+                await loadAllData(); 
+            } catch (error) {
+                console.error(error);
+                hideLoading();
+            }
         });
     });
 }
@@ -365,13 +366,21 @@ document.getElementById('save-fc-btn').addEventListener('click', async () => {
     if (!name || !amount || !paymentDay) { alert("すべての項目を入力してください"); return; }
 
     const payload = { name, amount, payment_day: paymentDay, memo: "" };
+    
+    showLoading();
     try {
         const response = await fetch(FC_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (response.ok) {
             document.getElementById('fc-name').value = ''; document.getElementById('fc-amount').value = ''; document.getElementById('fc-payment-day').value = '';
-            await loadAllData(); alert("固定費を登録しました！");
+            await loadAllData(); 
+            alert("固定費を登録しました！");
+        } else {
+            hideLoading();
         }
-    } catch (error) { console.error("通信エラー:", error); }
+    } catch (error) { 
+        console.error("通信エラー:", error); 
+        hideLoading();
+    }
 });
 
 // アプリ起動時の初期処理
