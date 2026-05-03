@@ -13,12 +13,40 @@
         .input-group-row { display: flex; gap: 5px; margin-top: 10px; }
         .input-group-row input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
         .input-group-row button { background: #007aff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+
+        /* ローディング画面のスタイル */
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(255, 255, 255, 0.85);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 9999;
+            visibility: hidden; opacity: 0; transition: opacity 0.3s ease;
+        }
+        .loading-overlay.active {
+            visibility: visible; opacity: 1;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid #f3f3f3;
+            border-top: 5px solid #007aff; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 15px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { font-size: 16px; font-weight: bold; color: #333; text-align: center; line-height: 1.5; }
+        .loading-subtext { font-size: 12px; color: #666; font-weight: normal; }
     </style>
 </head>
 <body>
-    <!-- ==============================
-         1. カレンダー・ホーム画面
-    ============================== -->
+
+    <!-- ローディング（待機）画面 -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">
+            通信中...<br>
+            <span class="loading-subtext">（しばらく操作がない場合、サーバーの起動に約1分かかります）</span>
+        </div>
+    </div>
+
+    <!-- 1. カレンダー・ホーム画面 -->
     <div id="view-calendar" class="app-view active">
         <header class="header">
             <button id="prev-month">◀</button>
@@ -51,9 +79,7 @@
         <button id="fab-add" class="fab">+</button>
     </div>
 
-    <!-- ==============================
-         2. 日別詳細画面
-    ============================== -->
+    <!-- 2. 日別詳細画面 -->
     <div id="view-daily-detail" class="app-view">
         <header class="header">
             <button class="btn-back-to-calendar">戻る</button>
@@ -71,9 +97,7 @@
         </div>
     </div>
 
-    <!-- ==============================
-         3. 入力・編集画面
-    ============================== -->
+    <!-- 3. 入力・編集画面 -->
     <div id="view-input" class="app-view">
         <header class="header">
             <button id="btn-back-to-detail">戻る</button>
@@ -93,7 +117,6 @@
             </div>
             <div class="form-group">
                 <label for="category">カテゴリ</label>
-                <!-- ★選択肢はJavaScriptで動的に生成します -->
                 <select id="category"></select>
             </div>
             <div class="form-group">
@@ -109,9 +132,7 @@
         </div>
     </div>
 
-    <!-- ==============================
-         4. 設定画面
-    ============================== -->
+    <!-- 4. 設定画面 -->
     <div id="view-settings" class="app-view">
         <header class="header">
             <button class="btn-back-to-calendar">戻る</button>
@@ -120,10 +141,8 @@
         </header>
         
         <div class="form-container">
-            <!-- 【追加】カテゴリ設定エリア -->
             <h2>カテゴリのカスタマイズ</h2>
             
-            <!-- 支出カテゴリ設定 -->
             <div class="category-setting-box">
                 <h3 style="margin-top: 0; color: #ff3b30;">支出カテゴリ</h3>
                 <div id="settings-expense-list"></div>
@@ -137,7 +156,6 @@
                 </div>
             </div>
 
-            <!-- 収入カテゴリ設定 -->
             <div class="category-setting-box">
                 <h3 style="margin-top: 0; color: #34c759;">収入カテゴリ</h3>
                 <div id="settings-income-list"></div>
@@ -153,7 +171,6 @@
 
             <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
 
-            <!-- 既存の固定費設定 -->
             <h2>固定費・サブスクの登録</h2>
             <div class="form-group">
                 <label for="fc-name">名称（家賃、Netflixなど）</label>
