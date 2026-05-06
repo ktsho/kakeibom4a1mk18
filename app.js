@@ -325,7 +325,7 @@ function openInputForm(dateStr, txData) {
         document.getElementById('input-view-title').textContent = "記帳する";
         document.getElementById('edit-id').value = ""; 
         document.querySelector('input[name="tx-type"][value="expense"]').checked = true;
-        document.querySelector('input[name="account-type"][value="cash"]').checked = true;
+        document.querySelector('input[name="account-type"][value="bank"]').checked = true;
         updateCategoryDropdown('expense'); 
         document.getElementById('delete-btn').style.display = 'none'; 
     }
