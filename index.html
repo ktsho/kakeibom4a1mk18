@@ -3,16 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>家計簿</title>
+    <title>スマート家計簿</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* カテゴリ設定用の簡易スタイル */
         .category-setting-box { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .category-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
         .btn-small-del { background: #ff3b30; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
         .input-group-row { display: flex; gap: 5px; margin-top: 10px; }
         .input-group-row input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
         .input-group-row button { background: #007aff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+        
+        .budget-item { display: flex; justify-content: space-between; padding: 10px; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 14px; cursor: pointer; margin-bottom: 8px; align-items: center; }
+        .budget-item:active { background: #f0f0f0; }
+        .over-budget { color: #ff3b30; font-weight: bold; }
+        .budget-label { color: #555; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -36,15 +40,25 @@
         </div>
 
         <div class="summary-container">
-            <div class="total-asset-box">
-                <span class="label-white">現在の総資産</span>
-                <span id="total-net-worth" class="asset-text">0円</span>
+            <div class="total-asset-box" style="padding: 15px;">
+                <div style="margin-bottom: 5px;">
+                    <span class="label-white">現在の総資産 (合算)</span>
+                    <span id="total-net-worth" class="asset-text">0円</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 14px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 8px; margin-top: 8px;">
+                    <div>現金: <span id="cash-net-worth" style="font-weight:bold;">0円</span></div>
+                    <div>口座: <span id="bank-net-worth" style="font-weight:bold;">0円</span></div>
+                </div>
             </div>
-            <div class="summary-box" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                <div class="summary-item" style="width: 45%;"><span class="label">今月の収入</span><span id="monthly-income" class="income-text">+0円</span></div>
-                <div class="summary-item" style="width: 45%;"><span class="label">今月の支出</span><span id="monthly-expense" class="expense-text">-0円</span></div>
-                <div class="summary-item" style="width: 45%;"><span class="label">今月の固定費</span><span id="monthly-fixed" class="expense-text">-0円</span></div>
-                <div class="summary-item highlight" style="width: 45%;"><span class="label">今月の残金</span><span id="monthly-balance" class="balance-text">0円</span></div>
+
+            <div class="summary-box" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <div class="summary-item" style="width: 50%;"><span class="label">今月の収入</span><span id="monthly-income" class="income-text">+0円</span></div>
+                <div class="summary-item" style="width: 50%;"><span class="label">今月の支出</span><span id="monthly-expense" class="expense-text">-0円</span></div>
+            </div>
+
+            <div class="summary-box">
+                <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #888;">今月のカテゴリ別支出 / 予算（タップで当月のみ変更）</h4>
+                <div id="category-budgets-list"></div>
             </div>
         </div>
         <button id="fab-add" class="fab">+</button>
@@ -82,6 +96,11 @@
                 <label><input type="radio" name="tx-type" value="expense" checked> 支出</label>
                 <label><input type="radio" name="tx-type" value="income"> 収入</label>
             </div>
+            <div class="type-switch" style="margin-top: 10px; background: #e0e0e0;">
+                <label><input type="radio" name="account-type" value="cash" checked> 💴 現金</label>
+                <label><input type="radio" name="account-type" value="bank"> 🏦 口座</label>
+            </div>
+
             <div class="form-group">
                 <label for="date">日付</label>
                 <input type="date" id="date" required>
@@ -112,7 +131,7 @@
         </header>
         
         <div class="form-container">
-            <h2>カテゴリのカスタマイズ</h2>
+            <h2>カテゴリと基本予算の設定</h2>
             
             <div class="category-setting-box">
                 <h3 style="margin-top: 0; color: #ff3b30;">支出カテゴリ</h3>
@@ -140,25 +159,42 @@
                 </div>
             </div>
 
-            <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
+            <!-- 【追加】スッキリした固定収支ボタン -->
+            <button id="toggle-fixed-settings-btn" class="save-btn" style="background-color: #8e8e93; margin-top: 20px;">固定収支を設定 ▾</button>
+            
+            <!-- 【追加】隠れている固定収支設定エリア -->
+            <div id="fixed-settings-area" style="display: none; border: 1px solid #ddd; padding: 15px; margin-top: 15px; border-radius: 8px; background: #fff;">
+                <h3 style="margin-top:0;">新しい固定収支の登録</h3>
+                
+                <div class="type-switch">
+                    <label><input type="radio" name="fixed-type" value="expense" checked> 支出</label>
+                    <label><input type="radio" name="fixed-type" value="income"> 収入</label>
+                </div>
+                <div class="type-switch" style="margin-top: 10px; background: #e0e0e0;">
+                    <label><input type="radio" name="fixed-account" value="cash" checked> 💴 現金</label>
+                    <label><input type="radio" name="fixed-account" value="bank"> 🏦 口座</label>
+                </div>
+                <div class="form-group">
+                    <label>毎月の発生日（1〜31日）</label>
+                    <input type="number" id="fixed-day" placeholder="例: 25" min="1" max="31">
+                </div>
+                <div class="form-group">
+                    <label>カテゴリ</label>
+                    <select id="fixed-category"></select>
+                </div>
+                <div class="form-group">
+                    <label>金額（円）</label>
+                    <input type="number" id="fixed-amount" placeholder="例: 80000">
+                </div>
+                <div class="form-group">
+                    <label>名称（メモ）</label>
+                    <input type="text" id="fixed-memo" placeholder="例: 家賃">
+                </div>
+                <button id="add-fixed-btn" class="save-btn">テンプレートを登録</button>
 
-            <h2>固定費・サブスクの登録</h2>
-            <div class="form-group">
-                <label for="fc-name">名称（家賃、Netflixなど）</label>
-                <input type="text" id="fc-name" placeholder="例: 家賃">
+                <h3 style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px;">登録済みの固定収支</h3>
+                <div id="fixed-templates-list"></div>
             </div>
-            <div class="form-group">
-                <label for="fc-amount">毎月の金額（円）</label>
-                <input type="number" id="fc-amount" placeholder="例: 80000">
-            </div>
-            <div class="form-group">
-                <label for="fc-payment-day">毎月の支払日（日）</label>
-                <input type="number" id="fc-payment-day" placeholder="例: 25" min="1" max="31">
-            </div>
-            <button id="save-fc-btn" class="save-btn">固定費を登録</button>
-
-            <h2 style="margin-top: 30px;">登録済みの固定費</h2>
-            <div id="fixed-costs-list" class="transaction-list"></div>
         </div>
     </div>
 
