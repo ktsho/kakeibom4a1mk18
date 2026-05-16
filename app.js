@@ -146,6 +146,13 @@ function calculateBudgetsAndCarryover(targetYear, targetMonth) {
     let y = minDate.getFullYear();
     let m = minDate.getMonth();
 
+    if (targetYear > 2026 || (targetYear === 2026 && targetMonth >= 4)) {
+        if (y < 2026 || (y === 2026 && m < 4)) {
+            y = 2026;
+            m = 4; // 開始位置を2026年5月に固定
+        }
+    }
+
     // カテゴリごとの繰り越し金庫 (マイナスは減額分)
     const carryoverStore = {};
     appSettings.expenseCategories.forEach(cat => carryoverStore[cat] = 0);
