@@ -13,10 +13,20 @@
         .input-group-row input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
         .input-group-row button { background: #007aff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
         
-        .budget-item { display: flex; justify-content: space-between; padding: 10px; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 14px; cursor: pointer; margin-bottom: 8px; align-items: center; }
+        /* 改良版：予算リスト用のスタイル */
+        .budget-item { display: flex; justify-content: space-between; padding: 12px 10px; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 13px; cursor: pointer; margin-bottom: 8px; align-items: center; }
         .budget-item:active { background: #f0f0f0; }
-        .over-budget { color: #ff3b30; font-weight: bold; }
-        .budget-label { color: #555; font-weight: bold; }
+        .budget-label { color: #333; font-weight: bold; width: 25%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .budget-values { width: 75%; text-align: right; font-family: monospace; }
+        
+        /* アラートカラー */
+        .over-month-budget { color: #ff9500; font-weight: bold; } /* 月予算オーバー：オレンジ */
+        .over-total-budget { color: #ff3b30; font-weight: bold; } /* 合計予算オーバー：赤 */
+        .income-added-budget { color: #34c759; font-weight: bold; } /* 収入合算あり：緑 */
+
+        /* 新設：ポップアップモーダル */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 12px; width: 85%; max-width: 400px; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -40,6 +50,7 @@
         </div>
 
         <div class="summary-container">
+            <!-- 総資産エリア -->
             <div class="total-asset-box" style="padding: 15px;">
                 <div style="margin-bottom: 5px;">
                     <span class="label-white">現在の総資産 (合算)</span>
@@ -51,13 +62,18 @@
                 </div>
             </div>
 
+            <!-- 今月の収支 -->
             <div class="summary-box" style="display: flex; gap: 10px; margin-bottom: 15px;">
                 <div class="summary-item" style="width: 50%;"><span class="label">今月の収入</span><span id="monthly-income" class="income-text">+0円</span></div>
                 <div class="summary-item" style="width: 50%;"><span class="label">今月の支出</span><span id="monthly-expense" class="expense-text">-0円</span></div>
             </div>
 
+            <!-- カテゴリ別 予算/支出リスト -->
             <div class="summary-box">
-                <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #888;">今月のカテゴリ別支出 / 予算（タップで当月のみ変更）</h4>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold; padding: 0 5px;">
+                    <span>カテゴリ</span>
+                    <span>支出 / 月予算 / 合計予算</span>
+                </div>
                 <div id="category-budgets-list"></div>
             </div>
         </div>
@@ -159,19 +175,16 @@
                 </div>
             </div>
 
-            <!-- 【追加】スッキリした固定収支ボタン -->
             <button id="toggle-fixed-settings-btn" class="save-btn" style="background-color: #8e8e93; margin-top: 20px;">固定収支を設定 ▾</button>
             
-            <!-- 【追加】隠れている固定収支設定エリア -->
             <div id="fixed-settings-area" style="display: none; border: 1px solid #ddd; padding: 15px; margin-top: 15px; border-radius: 8px; background: #fff;">
                 <h3 style="margin-top:0;">新しい固定収支の登録</h3>
-                
                 <div class="type-switch">
                     <label><input type="radio" name="fixed-type" value="expense" checked> 支出</label>
                     <label><input type="radio" name="fixed-type" value="income"> 収入</label>
                 </div>
                 <div class="type-switch" style="margin-top: 10px; background: #e0e0e0;">
-                    <label><input type="radio" name="fixed-account" value="cash" > 💴 現金</label>
+                    <label><input type="radio" name="fixed-account" value="cash"> 💴 現金</label>
                     <label><input type="radio" name="fixed-account" value="bank" checked> 🏦 口座</label>
                 </div>
                 <div class="form-group">
@@ -195,6 +208,30 @@
                 <h3 style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px;">登録済みの固定収支</h3>
                 <div id="fixed-templates-list"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- 【新設】5. カテゴリ詳細ポップアップモーダル -->
+    <div id="category-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-category-title" style="margin-top: 0; color: #007aff; border-bottom: 2px solid #007aff; padding-bottom: 8px;">カテゴリ詳細</h3>
+            
+            <!-- 当月予算の変更エリア -->
+            <div class="form-group" style="margin-top: 15px;">
+                <label style="font-weight: bold; font-size: 14px;">この月の基本予算を変更する</label>
+                <div class="input-group-row">
+                    <input type="number" id="modal-budget-input" placeholder="金額を入力">
+                    <button id="modal-budget-save-btn">変更</button>
+                </div>
+            </div>
+
+            <!-- 当月の支出明細一覧 -->
+            <h4 style="margin: 20px 0 10px 0; font-size: 14px; color: #555;">この月の支出明細</h4>
+            <div id="modal-expense-list" class="transaction-list" style="max-height: 250px; overflow-y: auto; border: 1px solid #eee; padding: 5px; border-radius: 6px; background: #fafafa;">
+                <!-- ここにJavaScriptで明細が並びます -->
+            </div>
+            
+            <button id="modal-close-btn" class="save-btn" style="background: #8e8e93; margin-top: 20px;">閉じる</button>
         </div>
     </div>
 
