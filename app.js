@@ -7,7 +7,7 @@ let selectedDateString = null;
 let dbTransactions = []; 
 
 // ★ここをご自身のRenderのURLに書き換えてください！★
-const API_BASE_URL = 'https://kakeibo-93mp.onrender.com/api/transactions';
+const API_BASE_URL = 'https://kakeibo-93mp.onrender.com/api/transactions'; 
 //const FC_API_URL = 'https://kakeibo-93mp.onrender.com/api/fixed_costs';
 
 // ==========================================
@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS = {
     defaultIncome: "給料",
     defaultBudgets: {}, 
     monthlyBudgets: {},
-    fixedTemplates: [] // 新設：固定収支のテンプレート
+    fixedTemplates: [] 
 };
 
 let appSettings = JSON.parse(localStorage.getItem('kakeibo_custom_settings')) || DEFAULT_SETTINGS;
@@ -49,8 +49,6 @@ function decodeMemo(rawMemo) {
 // ==========================================
 // データベース通信 ＆ 固定収支の自動入力処理
 // ==========================================
-
-// アプリを開いた時に「今月分」の固定収支を自動で送信する関数
 async function applyFixedTransactions() {
     const currentYearNum = new Date().getFullYear();
     const currentMonthNum = new Date().getMonth() + 1;
@@ -60,10 +58,7 @@ async function applyFixedTransactions() {
 
     for (let i = 0; i < appSettings.fixedTemplates.length; i++) {
         const template = appSettings.fixedTemplates[i];
-        
-        // まだ「今月」に入力されていなければ実行
         if (template.lastAppliedMonth !== currentMonthKey) {
-            // 月末（2月など）が存在しない日付の場合は、その月の末日に自動調整
             let applyDay = template.day;
             if (applyDay > lastDayOfMonth) applyDay = lastDayOfMonth;
             
@@ -71,26 +66,17 @@ async function applyFixedTransactions() {
             const prefix = template.accountType === 'cash' ? '[現金]' : '[口座]';
             const finalMemo = template.memo ? `${prefix} ${template.memo}` : prefix;
 
-            const payload = {
-                date: dateStr,
-                category: template.category,
-                amount: template.amount,
-                memo: finalMemo,
-                type: template.type
-            };
+            const payload = { date: dateStr, category: template.category, amount: template.amount, memo: finalMemo, type: template.type };
 
             try {
                 const res = await fetch(API_BASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (res.ok) {
-                    template.lastAppliedMonth = currentMonthKey; // 今月分を入力済みにマーク
+                    template.lastAppliedMonth = currentMonthKey;
                     appliedAny = true;
                 }
-            } catch (e) {
-                console.error("固定収支の自動入力に失敗:", e);
-            }
+            } catch (e) { console.error("固定収支の自動入力に失敗:", e); }
         }
     }
-
     if (appliedAny) saveSettings();
     return appliedAny;
 }
@@ -108,11 +94,9 @@ async function loadAllData() {
         }
     } catch (error) { 
         console.error("データ取得エラー:", error); 
-        alert("データの取得に失敗しました。URLが正しいか確認してください。");
     }
 }
 
-// アプリ起動時の初期処理（自動入力してからデータを読み込む）
 window.onload = async () => {
     await applyFixedTransactions();
     loadAllData();
@@ -130,15 +114,95 @@ function switchView(viewId) {
 
 document.querySelectorAll('.btn-back-to-calendar').forEach(btn => btn.addEventListener('click', () => switchView('view-calendar')));
 document.getElementById('btn-to-settings').addEventListener('click', () => switchView('view-settings'));
-
 document.getElementById('btn-back-to-detail').addEventListener('click', () => {
     if (selectedDateString === null) { switchView('view-calendar'); } else { openDailyDetail(selectedDateString); }
 });
-
 document.getElementById('fab-add').addEventListener('click', () => {
     selectedDateString = null;
     openInputForm(new Date().toISOString().split('T')[0], null); 
 });
+
+// ==========================================
+// 【新設】過去の月からの予算・繰り越し・超過の連続シミュレーションエンジン
+// ==========================================
+function calculateBudgetsAndCarryover(targetYear, targetMonth) {
+    const finalResult = {};
+    appSettings.expenseCategories.forEach(cat => {
+        finalResult[cat] = { spent: 0, monthlyBudget: 0, totalBudget: 0, isIncomeAdded: false };
+    });
+
+    if (dbTransactions.length === 0) {
+        appSettings.expenseCategories.forEach(cat => {
+            const b = appSettings.defaultBudgets[cat] || 0;
+            finalResult[cat] = { spent: 0, monthlyBudget: b, totalBudget: b, isIncomeAdded: false };
+        });
+        return finalResult;
+    }
+
+    // データの最古の月を特定
+    let minDate = new Date();
+    dbTransactions.forEach(tx => { const d = new Date(tx.date); if (d < minDate) minDate = d; });
+    
+    let y = minDate.getFullYear();
+    let m = minDate.getMonth();
+
+    // カテゴリごとの繰り越し金庫 (マイナスは減額分)
+    const carryoverStore = {};
+    appSettings.expenseCategories.forEach(cat => carryoverStore[cat] = 0);
+
+    // 最古の月から現在のターゲット月まで1ヶ月ずつ進めて計算
+    while (true) {
+        const monthKey = `${y}-${String(m + 1).padStart(2, '0')}`;
+        const spentThisMonth = {};
+        const incomeThisMonth = {};
+        appSettings.expenseCategories.forEach(cat => { spentThisMonth[cat] = 0; incomeThisMonth[cat] = 0; });
+
+        // この月のデータを集計
+        dbTransactions.forEach(tx => {
+            if (tx.date.startsWith(monthKey)) {
+                if (tx.type === 'expense' && spentThisMonth[tx.category] !== undefined) {
+                    spentThisMonth[tx.category] += tx.amount;
+                }
+                // 【条件】支出カテゴリと収入カテゴリで名前が同じ場合
+                if (tx.type === 'income' && appSettings.expenseCategories.includes(tx.category)) {
+                    incomeThisMonth[tx.category] += tx.amount;
+                }
+            }
+        });
+
+        // 各カテゴリの計算
+        appSettings.expenseCategories.forEach(cat => {
+            let baseBudget = appSettings.defaultBudgets[cat] || 0;
+            if (appSettings.monthlyBudgets[monthKey] && appSettings.monthlyBudgets[monthKey][cat] !== undefined) {
+                baseBudget = appSettings.monthlyBudgets[monthKey][cat];
+            }
+
+            const addedIncome = incomeThisMonth[cat] || 0;
+            const monthlyBudget = baseBudget + addedIncome; // 収入分を追加
+            const isIncomeAdded = addedIncome > 0;
+
+            const prevCarryover = carryoverStore[cat];
+            const totalBudget = monthlyBudget + prevCarryover; // 前月の残りと今月の予算の合計
+
+            const spent = spentThisMonth[cat];
+
+            // 翌月への繰り越し計算（合計予算を超えた超過分は自動的にマイナスになり、翌月減額される）
+            carryoverStore[cat] = totalBudget - spent;
+
+            if (y === targetYear && m === targetMonth) {
+                finalResult[cat] = { spent, monthlyBudget, totalBudget, isIncomeAdded };
+            }
+        });
+
+        if (y === targetYear && m === targetMonth) break;
+
+        m++;
+        if (m > 11) { m = 0; y++; }
+        if (y > targetYear + 1) break; // 安全弁
+    }
+
+    return finalResult;
+}
 
 // ==========================================
 // カレンダー＆サマリー描画処理
@@ -154,11 +218,8 @@ function renderCalendar(year, month) {
     let totalIncome = 0; let totalExpense = 0;
     let cashIncome = 0; let cashExpense = 0;
     let bankIncome = 0; let bankExpense = 0;
-
     let monthIncome = 0; let monthExpense = 0;
     const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
-    const categoryTotals = {};
-    appSettings.expenseCategories.forEach(cat => categoryTotals[cat] = 0);
 
     dbTransactions.forEach(tx => {
         if (tx.type === 'income') {
@@ -169,13 +230,9 @@ function renderCalendar(year, month) {
             totalExpense += tx.amount;
             if (tx.accountType === 'cash') cashExpense += tx.amount; else bankExpense += tx.amount;
         }
-
         if (tx.date.startsWith(monthKey)) {
             if (tx.type === 'income') monthIncome += tx.amount;
-            if (tx.type === 'expense') {
-                monthExpense += tx.amount;
-                if (categoryTotals[tx.category] !== undefined) categoryTotals[tx.category] += tx.amount;
-            }
+            if (tx.type === 'expense') monthExpense += tx.amount;
         }
     });
 
@@ -195,7 +252,6 @@ function renderCalendar(year, month) {
         const cell = document.createElement('div');
         cell.className = 'calendar-cell';
         cell.innerHTML = `<div>${i}</div>`;
-        
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         const dayTxs = dbTransactions.filter(tx => tx.date === dateStr);
         let dayIncome = 0; let dayExpense = 0;
@@ -211,33 +267,38 @@ function renderCalendar(year, month) {
         grid.appendChild(cell);
     }
 
+    // シミュレーションエンジンから高度な予算データを取得
+    const budgetData = calculateBudgetsAndCarryover(year, month);
+
     const budgetListContainer = document.getElementById('category-budgets-list');
     budgetListContainer.innerHTML = '';
 
     appSettings.expenseCategories.forEach(cat => {
-        const spent = categoryTotals[cat];
-        let budget = 0;
-        if (appSettings.monthlyBudgets[monthKey] && appSettings.monthlyBudgets[monthKey][cat] !== undefined) {
-            budget = appSettings.monthlyBudgets[monthKey][cat];
-        } else if (appSettings.defaultBudgets[cat] !== undefined) {
-            budget = appSettings.defaultBudgets[cat];
+        const data = budgetData[cat];
+        
+        // 色の条件分岐
+        let spentClass = '';
+        if (data.spent > data.totalBudget) {
+            spentClass = 'over-total-budget'; // 合計予算オーバー：赤文字
+        } else if (data.spent > data.monthlyBudget) {
+            spentClass = 'over-month-budget'; // 月予算オーバー：オレンジ文字
         }
 
-        const isOver = spent > budget && budget > 0;
+        const budgetClass = data.isIncomeAdded ? 'income-added-budget' : ''; // 収入加算あり：緑文字
+
         const div = document.createElement('div');
         div.className = 'budget-item';
-        div.innerHTML = `<span class="budget-label">${cat}</span><span class="${isOver ? 'over-budget' : ''}">${spent.toLocaleString()}円 / ${budget.toLocaleString()}円</span>`;
+        div.innerHTML = `
+            <span class="budget-label">${cat}</span>
+            <span class="budget-values">
+                <span class="${spentClass}">${data.spent.toLocaleString()}円</span> / 
+                <span class="${budgetClass}">${data.monthlyBudget.toLocaleString()}円</span> / 
+                <span>${data.totalBudget.toLocaleString()}円</span>
+            </span>
+        `;
         
-        div.addEventListener('click', () => {
-            const userInput = prompt(`【${cat}】の${month + 1}月の予算を変更します。\n数値を入力してください（単位：円）`, budget);
-            if (userInput !== null) {
-                const newBudget = parseInt(userInput, 10) || 0;
-                if (!appSettings.monthlyBudgets[monthKey]) appSettings.monthlyBudgets[monthKey] = {};
-                appSettings.monthlyBudgets[monthKey][cat] = newBudget;
-                saveSettings();
-                renderCalendar(year, month);
-            }
-        });
+        // カテゴリタップで新設のポップアップ詳細を起動
+        div.addEventListener('click', () => openCategoryModal(cat, year, month, data));
         budgetListContainer.appendChild(div);
     });
 }
@@ -249,6 +310,66 @@ document.getElementById('prev-month').addEventListener('click', () => {
 document.getElementById('next-month').addEventListener('click', () => {
     currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; }
     renderCalendar(currentYear, currentMonth);
+});
+
+// ==========================================
+// 【新設】カテゴリ詳細ポップアップモーダルの制御
+// ==========================================
+let activeModalCat = null;
+let activeModalYear = null;
+let activeModalMonth = null;
+
+function openCategoryModal(cat, year, month, data) {
+    activeModalCat = cat; activeModalYear = year; activeModalMonth = month;
+    const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+    
+    document.getElementById('modal-category-title').textContent = `${month + 1}月 【${cat}】 詳細`;
+    
+    // 現在の月個別予算をインプットに初期値として入れる（無ければデフォルト）
+    const currentBase = appSettings.monthlyBudgets[monthKey] && appSettings.monthlyBudgets[monthKey][cat] !== undefined 
+                        ? appSettings.monthlyBudgets[monthKey][cat] 
+                        : (appSettings.defaultBudgets[cat] || 0);
+    document.getElementById('modal-budget-input').value = currentBase;
+
+    // 明細リストの抽出
+    const modalList = document.getElementById('modal-expense-list');
+    modalList.innerHTML = '';
+    
+    const matchedTxs = dbTransactions.filter(tx => tx.date.startsWith(monthKey) && tx.type === 'expense' && tx.category === cat);
+    
+    if (matchedTxs.length === 0) {
+        modalList.innerHTML = '<p style="text-align:center; font-size:12px; color:#888; padding:10px;">今月の支出明細はありません</p>';
+    } else {
+        matchedTxs.forEach(tx => {
+            const dDiv = document.createElement('div');
+            dDiv.className = 'transaction-item tx-expense-item';
+            dDiv.style.padding = '8px';
+            dDiv.style.fontSize = '12px';
+            const accIcon = tx.accountType === 'cash' ? '💴' : '🏦';
+            const dayNum = tx.date.split('-')[2];
+            dDiv.innerHTML = `<div class="tx-info"><span>${dayNum}日: ${accIcon} ${tx.cleanMemo || 'メモなし'}</span></div><div class="tx-amount expense">-${tx.amount.toLocaleString()}円</div>`;
+            modalList.appendChild(dDiv);
+        });
+    }
+
+    document.getElementById('category-modal').style.display = 'flex';
+}
+
+// ポップアップ内の変更ボタン処理
+document.getElementById('modal-budget-save-btn').addEventListener('click', () => {
+    const newVal = parseInt(document.getElementById('modal-budget-input').value, 10) || 0;
+    const monthKey = `${activeModalYear}-${String(activeModalMonth + 1).padStart(2, '0')}`;
+    
+    if (!appSettings.monthlyBudgets[monthKey]) appSettings.monthlyBudgets[monthKey] = {};
+    appSettings.monthlyBudgets[monthKey][activeModalCat] = newVal;
+    
+    saveSettings();
+    document.getElementById('category-modal').style.display = 'none';
+    renderCalendar(activeModalYear, activeModalMonth);
+});
+
+document.getElementById('modal-close-btn').addEventListener('click', () => {
+    document.getElementById('category-modal').style.display = 'none';
 });
 
 // ==========================================
@@ -325,7 +446,7 @@ function openInputForm(dateStr, txData) {
         document.getElementById('input-view-title').textContent = "記帳する";
         document.getElementById('edit-id').value = ""; 
         document.querySelector('input[name="tx-type"][value="expense"]').checked = true;
-        document.querySelector('input[name="account-type"][value="bank"]').checked = true;
+        document.querySelector('input[name="account-type"][value="bank"]').checked = true; // デフォルトを口座に修正
         updateCategoryDropdown('expense'); 
         document.getElementById('delete-btn').style.display = 'none'; 
     }
@@ -369,14 +490,11 @@ document.getElementById('delete-btn').addEventListener('click', async () => {
 // ==========================================
 // 設定画面（固定収支・予算）の制御
 // ==========================================
-
-// 固定収支エリアのトグル開閉
 document.getElementById('toggle-fixed-settings-btn').addEventListener('click', () => {
     const area = document.getElementById('fixed-settings-area');
     area.style.display = area.style.display === 'none' ? 'block' : 'none';
 });
 
-// 固定収支のカテゴリ更新
 function updateFixedCategoryDropdown(selectedType) {
     const select = document.getElementById('fixed-category');
     select.innerHTML = ''; 
@@ -405,7 +523,6 @@ function renderSettingsView() {
     incSelect.innerHTML = appSettings.incomeCategories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
     if(appSettings.incomeCategories.includes(appSettings.defaultIncome)) incSelect.value = appSettings.defaultIncome;
 
-    // 固定収支の描画
     const currentFixedType = document.querySelector('input[name="fixed-type"]:checked').value;
     updateFixedCategoryDropdown(currentFixedType);
 
@@ -425,7 +542,7 @@ function renderSettingsView() {
 
         document.querySelectorAll('.delete-fixed-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                if (!confirm("この自動入力を削除しますか？\n（※既にカレンダーに自動入力された過去のデータは消えません）")) return;
+                if (!confirm("この自動入力を削除しますか？")) return;
                 appSettings.fixedTemplates.splice(e.target.getAttribute('data-index'), 1);
                 saveSettings();
             });
@@ -433,7 +550,6 @@ function renderSettingsView() {
     }
 }
 
-// 固定収支の登録ボタン
 document.getElementById('add-fixed-btn').addEventListener('click', async () => {
     const type = document.querySelector('input[name="fixed-type"]:checked').value;
     const accountType = document.querySelector('input[name="fixed-account"]:checked').value;
@@ -442,7 +558,7 @@ document.getElementById('add-fixed-btn').addEventListener('click', async () => {
     const amount = parseInt(document.getElementById('fixed-amount').value, 10);
     const memo = document.getElementById('fixed-memo').value;
 
-    if (!day || day < 1 || day > 31 || !amount) { alert("日付（1〜31）と金額を正しく入力してください"); return; }
+    if (!day || day < 1 || day > 31 || !amount) { alert("日付と金額を正しく入力してください"); return; }
 
     const newTemplate = { id: Date.now(), type, accountType, day, category, amount, memo, lastAppliedMonth: "" };
     appSettings.fixedTemplates.push(newTemplate);
@@ -451,10 +567,9 @@ document.getElementById('add-fixed-btn').addEventListener('click', async () => {
     document.getElementById('fixed-amount').value = '';
     document.getElementById('fixed-memo').value = '';
 
-    // 登録後、即座に今月分を自動入力させる
     const applied = await applyFixedTransactions();
     if (applied) await loadAllData();
-    alert("固定収支を登録し、今月分のデータをカレンダーに自動入力しました！");
+    alert("固定収支を登録しました！");
 });
 
 window.updateDefaultBudget = function(cat, val) { appSettings.defaultBudgets[cat] = parseInt(val, 10) || 0; saveSettings(); };
