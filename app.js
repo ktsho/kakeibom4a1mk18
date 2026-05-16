@@ -131,53 +131,40 @@ function calculateBudgetsAndCarryover(targetYear, targetMonth) {
         finalResult[cat] = { spent: 0, monthlyBudget: 0, totalBudget: 0, isIncomeAdded: false };
     });
 
-    if (dbTransactions.length === 0) {
-        appSettings.expenseCategories.forEach(cat => {
-            const b = appSettings.defaultBudgets[cat] || 0;
-            finalResult[cat] = { spent: 0, monthlyBudget: b, totalBudget: b, isIncomeAdded: false };
-        });
+    if (dbTransactions.length === 0) return finalResult;
+
+    // ★修正ポイント1：計算のスタート地点を「常に2026年5月」に強制固定する
+    // これにより、4月以前に入力された初期データが「予算繰り越し」に悪影響を及ぼさなくなります
+    let y = 2026;
+    let m = 4; // 5月（JavaScriptでは4）
+
+    // もしターゲットの月が2026年5月より前（例：4月）を表示している場合は、繰り越しなしでそのまま返す
+    if (targetYear < 2026 || (targetYear === 2026 && targetMonth < 4)) {
         return finalResult;
     }
 
-    // データの最古の月を特定
-    let minDate = new Date();
-    dbTransactions.forEach(tx => { const d = new Date(tx.date); if (d < minDate) minDate = d; });
-    
-    let y = minDate.getFullYear();
-    let m = minDate.getMonth();
-
-    if (targetYear > 2026 || (targetYear === 2026 && targetMonth >= 4)) {
-        if (y < 2026 || (y === 2026 && m < 4)) {
-            y = 2026;
-            m = 4; // 開始位置を2026年5月に固定
-        }
-    }
-
-    // カテゴリごとの繰り越し金庫 (マイナスは減額分)
     const carryoverStore = {};
     appSettings.expenseCategories.forEach(cat => carryoverStore[cat] = 0);
 
-    // 最古の月から現在のターゲット月まで1ヶ月ずつ進めて計算
+    // 2026年5月から、現在のターゲット月まで1ヶ月ずつ順番に計算
     while (true) {
         const monthKey = `${y}-${String(m + 1).padStart(2, '0')}`;
         const spentThisMonth = {};
         const incomeThisMonth = {};
         appSettings.expenseCategories.forEach(cat => { spentThisMonth[cat] = 0; incomeThisMonth[cat] = 0; });
 
-        // この月のデータを集計
+        // この月のデータを集計（★総資産の計算ではなく、あくまで予算用の集計）
         dbTransactions.forEach(tx => {
             if (tx.date.startsWith(monthKey)) {
                 if (tx.type === 'expense' && spentThisMonth[tx.category] !== undefined) {
                     spentThisMonth[tx.category] += tx.amount;
                 }
-                // 【条件】支出カテゴリと収入カテゴリで名前が同じ場合
                 if (tx.type === 'income' && appSettings.expenseCategories.includes(tx.category)) {
                     incomeThisMonth[tx.category] += tx.amount;
                 }
             }
         });
 
-        // 各カテゴリの計算
         appSettings.expenseCategories.forEach(cat => {
             let baseBudget = appSettings.defaultBudgets[cat] || 0;
             if (appSettings.monthlyBudgets[monthKey] && appSettings.monthlyBudgets[monthKey][cat] !== undefined) {
@@ -185,15 +172,16 @@ function calculateBudgetsAndCarryover(targetYear, targetMonth) {
             }
 
             const addedIncome = incomeThisMonth[cat] || 0;
-            const monthlyBudget = baseBudget + addedIncome; // 収入分を追加
+            const monthlyBudget = baseBudget + addedIncome;
             const isIncomeAdded = addedIncome > 0;
 
             const prevCarryover = carryoverStore[cat];
-            const totalBudget = monthlyBudget + prevCarryover; // 前月の残りと今月の予算の合計
+            // 今月の合計予算 ＝ 今月の予算 ＋ 前月からの繰り越し残金（不足ならマイナス）
+            const totalBudget = monthlyBudget + prevCarryover; 
 
             const spent = spentThisMonth[cat];
 
-            // 翌月への繰り越し計算（合計予算を超えた超過分は自動的にマイナスになり、翌月減額される）
+            // 翌月への繰り越し ＝ 今月の合計予算 － 今月使った金額
             carryoverStore[cat] = totalBudget - spent;
 
             if (y === targetYear && m === targetMonth) {
@@ -205,12 +193,11 @@ function calculateBudgetsAndCarryover(targetYear, targetMonth) {
 
         m++;
         if (m > 11) { m = 0; y++; }
-        if (y > targetYear + 1) break; // 安全弁
+        if (y > targetYear + 2) break; // 安全弁
     }
 
     return finalResult;
 }
-
 // ==========================================
 // カレンダー＆サマリー描画処理
 // ==========================================
