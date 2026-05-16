@@ -14,12 +14,11 @@
         .input-group-row button { background: #007aff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
         
         /* 改良版：予算リスト用のスタイル */
-        .budget-item { display: flex; justify-content: space-between; padding: 12px 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 12px; cursor: pointer; margin-bottom: 8px; align-items: center; }
+        .budget-item { display: flex; justify-content: space-between; padding: 12px 10px; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+            font-size: 13px; /* 横幅が広がるので 13px に大きく戻します */cursor: pointer; margin-bottom: 8px; align-items: center; width: 100%;  box-sizing: border-box; }
         .budget-item:active { background: #f0f0f0; }
-        /* カテゴリ名の幅を 25% → 18% に縮め、数値側のスペースを確保 */
-        .budget-label { color: #333; font-weight: bold; width: 18%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        /* 数値側の幅を 75% → 82% に広げ、white-space: nowrap で絶対に改行させない */
-        .budget-values { width: 82%; text-align: right; font-family: monospace; white-space: nowrap; }
+        .budget-label { color: #333; font-weight: bold; width: 22%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .budget-values { width: 78%; text-align: right; font-family: monospace; white-space: nowrap; }
         
         /* アラートカラー */
         .over-month-budget { color: #ff9500; font-weight: bold; } /* 月予算オーバー：オレンジ */
