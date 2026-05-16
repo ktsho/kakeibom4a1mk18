@@ -267,6 +267,34 @@ function renderCalendar(year, month) {
     const budgetListContainer = document.getElementById('category-budgets-list');
     budgetListContainer.innerHTML = '';
 
+    // === 【追加】全カテゴリの合計を計算 ===
+    let sumSpent = 0;
+    let sumMonthly = 0;
+    let sumTotal = 0;
+
+    appSettings.expenseCategories.forEach(cat => {
+        const data = budgetData[cat];
+        sumSpent += data.spent;
+        sumMonthly += data.monthlyBudget;
+        sumTotal += data.totalBudget;
+    });
+
+    // === 【追加】一番上に全体の合計行を表示 ===
+    const totalDiv = document.createElement('div');
+    totalDiv.className = 'budget-item';
+    totalDiv.style.background = '#f2f2f7'; // 合計と分かりやすいように薄いグレーに
+    totalDiv.style.fontWeight = 'bold';
+    totalDiv.innerHTML = `
+        <span class="budget-label">合計</span>
+        <span class="budget-values">
+            <span>${sumSpent.toLocaleString()}円</span> / 
+            <span>${sumMonthly.toLocaleString()}円</span> / 
+            <span>${sumTotal.toLocaleString()}円</span>
+        </span>
+    `;
+    budgetListContainer.appendChild(totalDiv);
+
+    // === 各カテゴリの描画（ここから既存のループ処理） ===
     appSettings.expenseCategories.forEach(cat => {
         const data = budgetData[cat];
         
@@ -291,11 +319,10 @@ function renderCalendar(year, month) {
             </span>
         `;
         
-        // カテゴリタップで新設のポップアップ詳細を起動
         div.addEventListener('click', () => openCategoryModal(cat, year, month, data));
         budgetListContainer.appendChild(div);
     });
-}
+} // renderCalendar関数の閉じカッコ
 
 document.getElementById('prev-month').addEventListener('click', () => {
     currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; }
